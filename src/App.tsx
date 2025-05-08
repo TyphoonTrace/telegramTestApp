@@ -1,43 +1,69 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { init, miniApp } from "@telegram-apps/sdk";
+import { Header } from "./ui/Header";
+
+async function initializeTelegramSDK(
+  setIsTelegramOpened: React.Dispatch<React.SetStateAction<boolean>>,
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>,
+  setError: React.Dispatch<React.SetStateAction<string | null>>
+) {
+  setLoading(true);
+  setError(null);
+  try {
+    await init();
+    if (miniApp.ready.isAvailable()) {
+      await miniApp.ready();
+      setIsTelegramOpened(true);
+    } else {
+      setIsTelegramOpened(false);
+      setError("Приложение доступно только через Telegram");
+    }
+  } catch (error) {
+    setIsTelegramOpened(false);
+    setError("Приложение доступно только через Telegram");
+  } finally {
+    setLoading(false);
+  }
+}
 
 function App() {
-  const [isTelegramOpened, setIsTelegramOpened] = useState<boolean | null>(
-    null
-  );
+  const [isTelegramOpened, setIsTelegramOpened] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    const initializeTelegramSDK = async () => {
-      try {
-        await init();
-        if (miniApp.ready.isAvailable()) {
-          await miniApp.ready();
-          setIsTelegramOpened(true);
-          //   console.log("Mini App успех запуска");
-        } else {
-          setIsTelegramOpened(false);
-        }
-      } catch (error) {
-        // console.error("Mini App ошибка запуска:", error);
-        setIsTelegramOpened(false);
-      }
-    };
-    initializeTelegramSDK();
+    initializeTelegramSDK(setIsTelegramOpened, setLoading, setError);
   }, []);
 
-  if (isTelegramOpened === null) {
+  const incrementCount = useCallback(() => {
+    setCount((prev) => prev + 1);
+  }, []);
+
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-svh">
+      <div
+        className="flex items-center justify-center min-h-svh"
+        role="status"
+        aria-live="polite"
+      >
         Загрузка...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-svh p-4">
+        <div className="text-xl font-semibold text-zinc-950 mb-4">{error}</div>
       </div>
     );
   }
 
   if (!isTelegramOpened) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-svh">
+      <div className="flex flex-col items-center justify-center min-h-svh p-4">
         <div className="text-xl font-semibold">
           Данное приложение работает только через Telegram
         </div>
@@ -46,12 +72,13 @@ function App() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-svh">
+    <div className="flex flex-col justify-between min-h-svh p-4">
+      <Header />
       <Button
-        onClick={() => setCount((prev) => prev + 1)}
-        className="bg-blue-600 hover:bg-blue-700"
+        onClick={incrementCount}
+        className="bg-blue-600 hover:bg-blue-700 text-2xl p-8 rounded-2xl"
       >
-        Count {count}
+        Счетчик: {count}
       </Button>
     </div>
   );
